@@ -82,6 +82,12 @@ typedef struct CONSULTA {
     Data data;
 } Consulta;
 
+typedef enum TIPOENTIDADE {
+    TIPO_MEDICO,   // 0
+    TIPO_PACIENTE, // 1
+    TIPO_CONSULTA  // 2
+} TipoEntidade;
+
 // ------------------------------------------------------------------
 
 void lerDadosPacientes(Paciente **pacientes, int *tamanho) {
@@ -227,11 +233,11 @@ int setNumeroConsulta() {
 
     lerDadosConsultas(&consultas, &tam);
     
-    int num = 1 + rand() % 100;
+    int num = 1;
 
-    for (int i = 0; i < tam; i++) {
+    for (int i = 0; i < tam; ++i) {
         if (num == consultas[i].numero) {
-            num = 1 + rand() % 100;
+            num++;
             i = 0;
         }
     }
@@ -271,6 +277,155 @@ Paciente *pesquisarPaciente(uint id) {
     free(pacientes);
     
     return NULL;
+}
+
+Consulta *pesquisarConsulta(uint num) {
+    Consulta *consultas;
+    int tam;
+
+    lerDadosConsultas(&consultas, &tam);
+
+    for (int i = 0; i < tam; ++i) {
+        if (num == consultas[i].numero) return &consultas[i];
+    }
+
+    free(consultas);
+    
+    return NULL;
+}
+
+void imprimirGenerico(uint id, TipoEntidade tipo) {
+    if (tipo == TIPO_MEDICO) {
+        Medico *medico = pesquisarMedico(id);
+        if (medico != NULL) {
+            printf("\n----MÉDICO----\n");
+            printf("ID: %u\n", medico->ID);
+            printf("Nome: %s\n", medico->nome);
+            printf("Especialidade: %s\n\n", medico->especialidade);
+        } else {
+            printf("Não existe um MÉDICO com o ID: %d\n", id);
+        }
+    } 
+    
+    if (tipo == TIPO_PACIENTE) {
+        Paciente *paciente = pesquisarPaciente(id);
+        if (paciente != NULL) {
+            printf("\n----PACIENTE----\n");
+            printf("Nome: %s\n", paciente->nome);
+            if (strlen(paciente->identidade) >= 11) {
+                printf("Identidade: %.3s.%.3s.%.3s-%.2s\n\n", 
+                       paciente->identidade, 
+                       &paciente->identidade[3], 
+                       &paciente->identidade[6], 
+                       &paciente->identidade[9]);
+            } else {
+                printf("Identidade inválida ou muito curta.\n\n");
+            }
+            if (strlen(paciente->telefone.numero) >= 9) {
+                printf("Telefone: (%s)%.5s-%.4s\n", 
+                       paciente->telefone.ddd, 
+                       paciente->telefone.numero, 
+                       &paciente->telefone.numero[5]);
+            } else {
+                printf("Número de telefone inválido ou muito curto.\n");
+            }
+            printf("Sexo: %c\n", paciente->sexo);
+        }else {
+            printf("Não existe um PACIENTE com o ID: %d\n", id);
+        }
+    }
+
+    if (tipo == TIPO_CONSULTA) {
+        Consulta *consulta = pesquisarConsulta(id);
+        if (consulta != NULL) {
+            printf("\n----CONSULTA----\n");
+            printf("Número: %s\n", consulta->numero);
+            printf("Médico: %s\n", consulta->medico->nome);
+            printf("- Especialidade: %s\n", consulta->medico->especialidade);
+            printf("Paciente:\n", consulta->paciente->nome);
+            printf("- Identidade: %s\n", consulta->paciente->identidade);
+            printf("Data: %u/%u/%u às %u:%u\n",
+                    consulta->data.dia,
+                    consulta->data.mes,
+                    consulta->data.ano,
+                    consulta->horario.horas,
+                    consulta->horario.minutos);
+            printf("Duração: %u:%u\n\n", 
+                    consulta->duracao.tempo.horas, 
+                    consulta->duracao.tempo.minutos);
+        }else {
+            printf("Não existe uma CONSULTA com o NÚMERO: %d\n", id);
+        }
+    }
+    AVANCAR();
+}
+
+void imprimirTUDOGenerico(TipoEntidade tipo) {
+    if (tipo == TIPO_MEDICO) {
+        Medico *medicos = NULL;
+        int tam;
+        lerDadosMedicos(&medicos, &tam);
+        for (int i = 0; i < tam; ++i) {
+            printf("\n----- MÉDICO %d ----\n", i + 1);
+            printf("ID: %u\n", medicos[i].ID);
+            printf("Nome: %s\n", medicos[i].nome);
+            printf("Especialidade: %s\n\n", medicos[i].especialidade);
+        }
+         
+    } 
+    
+    if (tipo == TIPO_PACIENTE) {
+        Paciente *pacientes = NULL;
+        int tam;
+        lerDadosPacientes(&pacientes, &tam);
+        for (int i = 0; i < tam; ++i) {
+            printf("\n----PACIENTE----\n");
+            printf("ID: %u\n", pacientes[i].ID);
+            printf("Nome: %s\n", pacientes[i].nome);
+            if (strlen(pacientes->identidade) >= 11) {
+                printf("Identidade: %.3s.%.3s.%.3s-%.2s\n\n", 
+                        pacientes[i].identidade, 
+                       &pacientes[i].identidade[3], 
+                       &pacientes[i].identidade[6], 
+                       &pacientes[i].identidade[9]);
+            } else {
+                printf("Identidade inválida ou muito curta.\n\n");
+            }
+            if (strlen(pacientes[i].telefone.numero) >= 9) {
+                printf("Telefone: (%s)%.5s-%.4s\n", 
+                       pacientes[i].telefone.ddd, 
+                       pacientes[i].telefone.numero, 
+                       &pacientes[i].telefone.numero[5]);
+            } else {
+                printf("Número de telefone inválido ou muito curto.\n");
+            }
+            printf("Sexo: %c\n", pacientes[i].sexo);
+        }
+    }
+
+    if (tipo == TIPO_CONSULTA) {
+        Consulta *consultas = NULL;
+        int tam;
+        lerDadosConsultas(&consultas, &tam);
+        for (int i = 0; i < tam; ++i) {
+            printf("\n----CONSULTA----\n");
+            printf("Número: %s\n", consultas[i].numero);
+            printf("Médico: %s\n", consultas[i].medico->nome);
+            printf("- Especialidade: %s\n", consultas[i].medico->especialidade);
+            printf("Paciente:\n", consultas[i].paciente->nome);
+            printf("- Identidade: %s\n", consultas[i].paciente->identidade);
+            printf("Data: %u/%u/%u às %u:%u\n",
+                    consultas[i].data.dia,
+                    consultas[i].data.mes,
+                    consultas[i].data.ano,
+                    consultas[i].horario.horas,
+                    consultas[i].horario.minutos);
+            printf("Duração: %u:%u\n\n", 
+                    consultas[i].duracao.tempo.horas, 
+                    consultas[i].duracao.tempo.minutos);
+        }
+    }
+    AVANCAR();
 }
 
 // Pesquisas de consultas 
@@ -346,6 +501,12 @@ void adicionarMedico() {
 
     lerDadosMedicos(&medicos, &tam);
 
+    if (tam == MAX_MEDICOS) {
+        printf("\n\nO tamanho máximo de médicos foi alcançado.\n\n");
+        free(medicos);
+        return;
+    }
+
     tam++;
 
     Medico *aux = (Medico *)realloc(medicos, tam * sizeof(Medico));
@@ -376,6 +537,12 @@ void adicionarPaciente() {
     int tam = 0;
 
     lerDadosPacientes(&pacientes, &tam);
+
+    if (tam == MAX_PACIENTES) {
+        printf("\n\nO tamanho máximo de pacientes foi alcançado.\n\n");
+        free(pacientes);
+        return;
+    }
 
     tam++;
 
@@ -427,6 +594,13 @@ void adicionarConsulta() {
     int tam = 0;
 
     lerDadosConsultas(&consultas, &tam);
+
+    if (tam == MAX_CONSULTAS) {
+        printf("\n\nO tamanho máximo de consultados foi alcançado.\n\n");
+        free(consultas);
+        return;
+    }
+    
 
     tam++;
 
@@ -495,6 +669,8 @@ void adicionarConsulta() {
     free(consultas);
 }
 
+
+
 // Funções do Menu Principal---------------------------------------------
 
 void menu(int *opcao) {
@@ -520,11 +696,18 @@ void opcao_invalida() {
     AVANCAR();
 }
 
-void menu_secundario(char *string) {
+void opcao_pesquisar(TipoEntidade tipo) {
+    int id;
+    printf("Digite o Nº ou ID: ");
+    scanf("%d", &id);
+
+    imprimirGenerico(id, tipo);
+}
+
+void menu_secundario(/*TipoEntidade*/) {
     int opcao;
     do {
         LIMPAR_TELA();
-        LIMPAR_BUFFER();
         printf("%sS\n", string);
         printf("1 - Pesquisar\n");
         printf("2 - Adicionar\n");
@@ -538,7 +721,16 @@ void menu_secundario(char *string) {
 
         switch (opcao) {
             case 1:
-                // Exemplo de pesquisa (por ID)
+                TipoEntidade tipo;
+
+                if (!strcmp(string, "MÉDICO"))
+                    tipo = TIPO_MEDICO;
+                if (!strcmp(string, "PACIENTE"))
+                    tipo = TIPO_PACIENTE;
+                if (!strcmp(string, "CONSULTA")) {
+                    tipo = TIPO_CONSULTA;
+                }
+                opcao_pesquisar(tipo);
                 break;
             case 2:
                 if (!strcmp(string, "MÉDICO"))
