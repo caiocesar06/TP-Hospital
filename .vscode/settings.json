@@ -11,6 +11,7 @@
         "_mingw_mac.h": "c",
         "_mingw_secapi.h": "c",
         "_cygwin.h": "c",
-        "stddef.h": "c"
+        "stddef.h": "c",
+        "_mingw_off_t.h": "c"
     }
 }
