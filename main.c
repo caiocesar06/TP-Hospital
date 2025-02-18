@@ -409,7 +409,7 @@ void imprimirEntidadesGeral(TipoEntidade tipo) {
         Consulta *consultas = (Consulta *)vetor;
         for (int i = 0; i < tam; ++i) {
             printf("\n----CONSULTA----\n");
-            printf("Número: %s\n", consultas[i].numero);
+            printf("Número: %u\n", consultas[i].numero);
             printf("Médico: %s (%s)\n", 
                     consultas[i].medico->nome, 
                     consultas[i].medico->especialidade);
@@ -440,7 +440,7 @@ void adicionarMedico() {
 
     if (vetor == NULL || tam <= 0) {
         perror("Erro ao ler os dados ou dados não encontrados.");
-        return 0;
+        return;
     }
     
     Medico *medicos = (Medico *)vetor;
@@ -488,7 +488,7 @@ void adicionarPaciente() {
 
     if (vetor == NULL || tam <= 0) {
         perror("Erro ao ler os dados ou dados não encontrados.");
-        return 0;
+        return;
     }
     
     Paciente *pacientes = (Paciente *)vetor;
@@ -556,7 +556,7 @@ void adicionarConsulta() {
 
     if (vetor == NULL || tam <= 0) {
         perror("Erro ao ler os dados ou dados não encontrados.");
-        return 0;
+        return;
     }
     
     Consulta *consultas = (Consulta *)vetor;
@@ -1252,6 +1252,18 @@ void listarConsultasPorMedico(uint idMedico) {
 
 
 // Funções do Menu Principal------------------------------------------------------------------
+char *string_menu(TipoEntidade tipo) {
+    switch (tipo) {
+        case TIPO_MEDICO:
+            return "MÉDICO";
+        case TIPO_PACIENTE:
+            return "PACIENTE";
+        case TIPO_CONSULTA:
+            return "CONSULTA";
+        default:
+            return "INDEFINIDO";
+    }
+}
 
 void opcao_sair() {
     LIMPAR_TELA();
@@ -1269,7 +1281,7 @@ void opcao_pesquisar(TipoEntidade tipo) {
     int opcao;
     do {
         printf("1 - Pesquisar um usuário específico\n");
-        printf("2 - Mostrar lista de %s           \n", string_menu(tipo));
+        printf("2 - Mostrar lista de %sS          \n", string_menu(tipo));
         printf("3 - Voltar ao menu                 \n");
         printf("Escolha uma opção: ");
         scanf("%d", &opcao);
@@ -1299,19 +1311,6 @@ void opcao_pesquisar(TipoEntidade tipo) {
                 break;
         }
     } while(opcao != 3);
-}
-
-char *string_menu(TipoEntidade tipo) {
-    switch (tipo) {
-        case TIPO_MEDICO:
-            return "MÉDICO";
-        case TIPO_PACIENTE:
-            return "PACIENTE";
-        case TIPO_CONSULTA:
-            return "CONSULTA";
-        default:
-            return "INDEFINIDO";
-    }
 }
 
 
