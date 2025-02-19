@@ -40,22 +40,15 @@ typedef struct MEDICO {
 typedef struct  ENDERECO {
     char rua[100];
     char bairro[100];
-    char cidade[100];
     char numero[10];
-    char complemento[50];
 } Endereco;
-
-typedef struct TELEFONE {
-    char ddd[4];
-    char numero[16];
-} Telefone;
 
 typedef struct PACIENTE {
     uint ID;
     char nome[100];
     char identidade[20];
     Endereco endereco;
-    Telefone telefone;
+    char telefone[20];
     char sexo;
 } Paciente;
 
@@ -76,8 +69,8 @@ typedef struct DATA {
 
 typedef struct CONSULTA {
     uint numero;
-    Medico *medico;
-    Paciente *paciente;
+    Medico medico;
+    Paciente paciente;
     Horario horario;
     Duracao duracao;
     Data data;
@@ -159,7 +152,7 @@ int gravarDadosBIN(TipoEntidade tipo, void *vetor, int tam) {
 
         case TIPO_CONSULTA:
             tipo_bytes = sizeof(Consulta);
-            filename = "consulta.bin";
+            filename = "consultas.bin";
             break;
 
         default:
@@ -181,65 +174,6 @@ int gravarDadosBIN(TipoEntidade tipo, void *vetor, int tam) {
     }
 
     fclose(file);
-    return 1;
-}
-
-
-// Funções de verificação dos horários da consulta -------------------------------------------
-
-void ajeitarHorario(Horario *horario) {
-    if (horario->minutos >= 60) {
-        horario->horas += horario->minutos / 60;
-        horario->minutos = horario->minutos % 60;
-    }
-
-    if (horario->horas >= 24) {
-        horario->horas = horario->horas % 24;
-    }
-}
-
-int horariosConflitam(Horario inicio1, Horario fim1, Horario inicio2, Horario fim2) {
-    return (inicio1.horas < fim2.horas || (inicio1.horas == fim2.horas && inicio1.minutos < fim2.minutos)) &&
-           (inicio2.horas < fim1.horas || (inicio2.horas == fim1.horas && inicio2.minutos < fim1.minutos));
-}
-
-Horario calcularHorarioFinal(Horario inicio, Duracao duracao) {
-    Horario fim;
-    fim.horas = inicio.horas + duracao.tempo.horas;
-    fim.minutos = inicio.minutos + duracao.tempo.minutos;
-
-    ajeitarHorario(&fim);
-
-    return fim;
-}
-
-int temConsultaLivre(Data data, Horario horario, Duracao duracao) {
-    void *vetor = NULL;
-    int tam;
-
-    lerDadosBIN(TIPO_CONSULTA, &vetor, &tam);
-
-    if (vetor == NULL || tam <= 0) {
-        perror("Erro ao ler os dados ou dados não encontrados.");
-        return 0;
-    }
-
-    Consulta *consultas = (Consulta *)vetor;
-
-    Horario horario_fim = calcularHorarioFinal(horario, duracao);
-
-    for (int i = 0; i < tam; ++i) {
-        Horario hcons_ini = consultas[i].horario;
-        Horario hcons_fim = calcularHorarioFinal(hcons_ini, consultas[i].duracao);
-
-        if (horariosConflitam(horario, horario_fim, hcons_ini, hcons_fim)) {
-            printf("Conflito de horário encontrado.\n");
-            free(consultas);
-            return 0;
-        }
-    }
-
-    free(consultas);
     return 1;
 }
 
@@ -309,7 +243,7 @@ void imprimirEntidade(uint id, TipoEntidade tipo) {
     if (tipo == TIPO_MEDICO) {
         Medico *medico = (Medico *)pesquisarEntidade(TIPO_MEDICO, id);
         if (medico != NULL) {
-            printf("\n----MÉDICO----\n");
+            printf("\n--> MÉDICO\n");
             printf("ID: %u\n", medico->ID);
             printf("Nome: %s\n", medico->nome);
             printf("Especialidade: %s\n\n", medico->especialidade);
@@ -322,17 +256,15 @@ void imprimirEntidade(uint id, TipoEntidade tipo) {
     if (tipo == TIPO_PACIENTE) {
         Paciente *paciente = (Paciente *)pesquisarEntidade(TIPO_PACIENTE, id);
         if (paciente != NULL) {
-            printf("\n----PACIENTE----\n");
+            printf("\n--> PACIENTE\n");
+            printf("ID: %u\n", paciente->ID);
             printf("Nome: %s\n", paciente->nome);
-            printf("Identidade: %s\n\n", paciente->identidade);
-            if (strlen(paciente->telefone.numero) >= 9) {
-                printf("Telefone: (%s)%.5s-%.4s\n", 
-                       paciente->telefone.ddd, 
-                       paciente->telefone.numero, 
-                       &paciente->telefone.numero[5]);
-            } else {
-                printf("Número de telefone inválido ou muito curto.\n");
-            }
+            printf("Identidade: %s\n", paciente->identidade);
+            printf("Endereço: %s, %s, %s\n",
+                    paciente->endereco.rua,
+                    paciente->endereco.numero,
+                    paciente->endereco.bairro);
+            printf("Telefone: %s\n", paciente->telefone);
             printf("Sexo: %c\n", paciente->sexo);
         }else {
             printf("Não existe um PACIENTE com o ID: %d\n", id);
@@ -343,12 +275,12 @@ void imprimirEntidade(uint id, TipoEntidade tipo) {
     if (tipo == TIPO_CONSULTA) {
         Consulta *consulta = (Consulta *)pesquisarEntidade(TIPO_CONSULTA, id);
         if (consulta != NULL) {
-            printf("\n----CONSULTA----\n");
+            printf("\n--> CONSULTA\n");
             printf("Número: %u\n", consulta->numero);
-            printf("Médico: %s\n", consulta->medico->nome);
-            printf("- Especialidade: %s\n", consulta->medico->especialidade);
-            printf("Paciente:\n", consulta->paciente->nome);
-            printf("- Identidade: %s\n", consulta->paciente->identidade);
+            printf("Médico: %s\n", consulta->medico.nome);
+            printf("- Especialidade: %s\n", consulta->medico.especialidade);
+            printf("Paciente:\n", consulta->paciente.nome);
+            printf("- Identidade: %s\n", consulta->paciente.identidade);
             printf("Data: %u/%u/%u às %u:%u\n",
                     consulta->data.dia,
                     consulta->data.mes,
@@ -378,29 +310,25 @@ void imprimirEntidadesGeral(TipoEntidade tipo) {
     if (tipo == TIPO_MEDICO) {
         Medico *medicos = (Medico *)vetor;
         for (int i = 0; i < tam; ++i) {
-            printf("\n----- MÉDICO %d ----\n", i + 1);
+            printf("\n-->  MÉDICO %d\n", i + 1);
             printf("ID: %u\n", medicos[i].ID);
             printf("Nome: %s\n", medicos[i].nome);
             printf("Especialidade: %s\n\n", medicos[i].especialidade);
         }
-         
     } 
     
     if (tipo == TIPO_PACIENTE) {
         Paciente *pacientes = (Paciente *)vetor;
         for (int i = 0; i < tam; ++i) {
-            printf("\n----PACIENTE----\n");
+            printf("\n--> PACIENTE %d\n", i + 1);
             printf("ID: %u\n", pacientes[i].ID);
             printf("Nome: %s\n", pacientes[i].nome);
-            printf("Identidade: %s\n\n", pacientes[i].identidade);
-            if (strlen(pacientes[i].telefone.numero) >= 9) {
-                printf("Telefone: (%s)%.5s-%.4s\n", 
-                       pacientes[i].telefone.ddd, 
-                       pacientes[i].telefone.numero, 
-                       &pacientes[i].telefone.numero[5]);
-            } else {
-                printf("Número de telefone inválido ou muito curto.\n");
-            }
+            printf("Identidade: %s\n", pacientes[i].identidade);
+            printf("Endereço: %s, %s, %s\n",
+                    pacientes[i].endereco.rua,
+                    pacientes[i].endereco.numero,
+                    pacientes[i].endereco.bairro);
+            printf("Telefone: %s\n", pacientes[i].telefone);
             printf("Sexo: %c\n", pacientes[i].sexo);
         }
     }
@@ -408,14 +336,14 @@ void imprimirEntidadesGeral(TipoEntidade tipo) {
     if (tipo == TIPO_CONSULTA) {
         Consulta *consultas = (Consulta *)vetor;
         for (int i = 0; i < tam; ++i) {
-            printf("\n----CONSULTA----\n");
+            printf("\n-->CONSULTA\n");
             printf("Número: %u\n", consultas[i].numero);
             printf("Médico: %s (%s)\n", 
-                    consultas[i].medico->nome, 
-                    consultas[i].medico->especialidade);
+                    consultas[i].medico.nome, 
+                    consultas[i].medico.especialidade);
             printf("Paciente: %s (%s)\n", 
-                    consultas[i].paciente->nome,
-                    consultas[i].paciente->identidade);
+                    consultas[i].paciente.nome,
+                    consultas[i].paciente.identidade);
             printf("Data: %u/%u/%u às %u:%u\n",
                     consultas[i].data.dia,
                     consultas[i].data.mes,
@@ -437,11 +365,6 @@ void adicionarMedico() {
     int tam = 0;
 
     lerDadosBIN(TIPO_MEDICO, &vetor, &tam);
-
-    if (vetor == NULL || tam <= 0) {
-        perror("Erro ao ler os dados ou dados não encontrados.");
-        return;
-    }
     
     Medico *medicos = (Medico *)vetor;
 
@@ -485,11 +408,6 @@ void adicionarPaciente() {
     int tam = 0;
 
     lerDadosBIN(TIPO_PACIENTE, &vetor, &tam);
-
-    if (vetor == NULL || tam <= 0) {
-        perror("Erro ao ler os dados ou dados não encontrados.");
-        return;
-    }
     
     Paciente *pacientes = (Paciente *)vetor;
 
@@ -514,28 +432,27 @@ void adicionarPaciente() {
 
     printf("\nDigite o ID: ");
     scanf("%u", &paciente.ID);
+    
     printf("\nDigite o nome: ");
-    scanf(" %63[^\n]", paciente.nome);
+    scanf(" %99[^\n]", paciente.nome);
+
     printf("\nDigite a identidade: ");
-    scanf(" %21[^\n]", paciente.identidade);
+    scanf(" %19[^\n]", paciente.identidade);
 
-    printf("\n\nDigite a rua: ");
-    scanf(" %99[^\n]", paciente.endereco.rua);
-    printf("\nDigite a bairro: ");
-    scanf(" %99[^\n]", paciente.endereco.bairro);
-    printf("\nDigite a cidade: ");
-    scanf(" %99[^\n]", paciente.endereco.cidade);
-    printf("\nDigite o número da residência: ");
-    scanf(" %9[^\n]", paciente.endereco.numero);
-    printf("\nDigite o complemento: ");
-    scanf(" %49[^\n]", paciente.endereco.complemento);
+    char endereco[100];
+    printf("\nDigite o endereço: ");
+    scanf(" %[^\n]", endereco); 
+    char *rua = strtok(endereco, ",");
+    char *numero = strtok(NULL, " ");
+    char *bairro = strtok(NULL, "");
+    strcpy(paciente.endereco.rua, rua);
+    strcpy(paciente.endereco.numero, numero); 
+    strcpy(paciente.endereco.bairro, bairro); 
 
-    printf("\n\nDigite o DDD: ");
-    scanf(" %3[^\n]", paciente.telefone.ddd);
-    printf("\nDigite a número do contato: ");
-    scanf(" %15[^\n]", paciente.telefone.numero);
+    printf("\nDigite o telefone: ");
+    scanf(" %19[^\n]", paciente.telefone);
 
-    printf("\n\nDigite o sexo: ");
+    printf("\nDigite o sexo: ");
     scanf(" %c", &paciente.sexo);
 
     pacientes[tam - 1] = paciente;
@@ -553,11 +470,6 @@ void adicionarConsulta() {
     int tam = 0;
 
     lerDadosBIN(TIPO_CONSULTA, &vetor, &tam);
-
-    if (vetor == NULL || tam <= 0) {
-        perror("Erro ao ler os dados ou dados não encontrados.");
-        return;
-    }
     
     Consulta *consultas = (Consulta *)vetor;
 
@@ -596,7 +508,7 @@ void adicionarConsulta() {
             AVANCAR();
         }
     } while(medico == NULL);
-    consulta.medico = medico;
+    consulta.medico = *medico;
 
     Paciente *paciente;
     do {
@@ -608,27 +520,16 @@ void adicionarConsulta() {
             AVANCAR();
         }
     } while(paciente == NULL);
-    consulta.paciente = paciente;
+    consulta.paciente = *paciente;
+    
+    printf("\n\nDigite o horário da consulta: (HH:MM)\n");
+    scanf("%2u:%2u", &consulta.horario.horas, &consulta.horario.minutos);
 
-    Data data;
-    printf("\nDigite a data da consulta: (dd/mm/aaaa)");
-    scanf("%2u/%2u/%4u", &data.dia, &data.mes, &data.ano);
-
-    Horario horario;
-    Duracao duracao;
-    do {
-        printf("\n\nDigite o horário da consulta: (HH:MM)");
-        scanf("%2u:%2u", &horario.horas, &horario.minutos);
-
-        printf("\nDigite o tempo de duração da consulta: (HH:MM)");
-        scanf("%2u:%2u", &duracao.tempo.horas, &duracao.tempo.minutos);
-
-        if (!temConsultaLivre(data, horario, duracao)) AVANCAR();
-    } while (!temConsultaLivre(data, horario, duracao));
-
-    consulta.data = data;
-    consulta.horario = horario;
-    consulta.duracao = duracao;
+    printf("\nDigite o tempo de duração da consulta: (HH:MM)\n");
+    scanf("%2u:%2u", &consulta.duracao.tempo.horas, &consulta.duracao.tempo.minutos);
+    
+    printf("\nDigite a data da consulta: (dd/mm/aaaa)\n");
+    scanf("%2u/%2u/%4u", &consulta.data.dia, &consulta.data.mes, &consulta.data.ano);
 
     consultas[tam - 1] = consulta;
 
@@ -688,12 +589,12 @@ void removerMedico() {
     }
 
     for (int i = 0; i < tam_cons; ++i) {
-        if (id_medico == consultas[i].medico->ID) {
+        if (id_medico == consultas[i].medico.ID) {
             for (int j = i; j < tam_cons - 1; ++j) {
                 consultas[j] = consultas[j + 1];
             }
             --tam_cons;
-            break;
+            --i;
         }
     }
 
@@ -724,7 +625,6 @@ void removerMedico() {
         printf("\nMédico com ID %u não encontrado.\n\n", id_medico);
     }
 
-    AVANCAR();
     free(medicos);
     free(consultas);
 }
@@ -775,14 +675,15 @@ void removerPaciente() {
     }
 
     for (int i = 0; i < tam_cons; ++i) {
-        if (id_paciente == consultas[i].paciente->ID) {
+        if (id_paciente == consultas[i].paciente.ID) {
             for (int j = i; j < tam_cons - 1; ++j) {
                 consultas[j] = consultas[j + 1];
             }
             --tam_cons;
-            break;
+            --i;
         }
     }
+    
 
     if (id_encontrado) {
         Paciente *temp = realloc(pacientes, tam_pac * sizeof(Paciente));
@@ -811,7 +712,6 @@ void removerPaciente() {
     }
     free(pacientes);
     free(consultas);
-    AVANCAR();
 }
 
 void removerConsulta() {
@@ -837,7 +737,7 @@ void removerConsulta() {
         if (num_consulta == consultas[i].numero) {
             id_encontrado = 1;
             printf("Você está removendo o seguinte usuário:\n\n");
-            imprimirEntidade(consultas[i].numero, TIPO_PACIENTE);
+            imprimirEntidade(consultas[i].numero, TIPO_CONSULTA);
             AVANCAR();
             for (int j = i; j < tam - 1; ++j) {
                 consultas[j] = consultas[j + 1];
@@ -860,7 +760,6 @@ void removerConsulta() {
     } else {
         printf("\nConsulta com nº %u não encontrado.\n\n", num_consulta);
     }
-    AVANCAR();
     free(consultas);
 }
 // }
@@ -897,7 +796,6 @@ int atualizarMedicosBIN(Medico *medico) {
     gravarDadosBIN(TIPO_MEDICO, medicos, tam);
 
     free(medicos);
-    printf("Médico atualizado com sucesso!\n");
     return 1;
 }
 
@@ -932,7 +830,6 @@ int atualizarPacienteBIN(Paciente *paciente) {
     gravarDadosBIN(TIPO_PACIENTE, pacientes, tam);
 
     free(pacientes);
-    printf("Médico atualizado com sucesso!\n");
     return 1;
 }
 
@@ -967,7 +864,6 @@ int atualizarConsultaBIN(Consulta *consulta) {
     gravarDadosBIN(TIPO_CONSULTA, consultas, tam);
 
     free(consultas);
-    printf("Consulta atualizado com sucesso!\n");
 
     return 1;
 }
@@ -1030,21 +926,18 @@ void alterarPaciente() {
     printf("\nIdentidade: ");
     scanf(" %19[^\n]", paciente->identidade);
 
-    printf("\n\nDigite a rua: ");
-    scanf(" %99[^\n]", paciente->endereco.rua);
-    printf("\nDigite a bairro: ");
-    scanf(" %99[^\n]", paciente->endereco.bairro);
-    printf("\nDigite a cidade: ");
-    scanf(" %99[^\n]", paciente->endereco.cidade);
-    printf("\nDigite o número da residência: ");
-    scanf(" %9[^\n]", paciente->endereco.numero);
-    printf("\nDigite o complemento: ");
-    scanf(" %49[^\n]", paciente->endereco.complemento);
+    char endereco[100];
+    printf("\nDigite o endereço: ");
+    scanf(" %[^\n]", endereco); 
+    char *rua = strtok(endereco, ",");
+    char *numero = strtok(NULL, " ");
+    char *bairro = strtok(NULL, "");
+    strcpy(paciente->endereco.rua, rua);
+    strcpy(paciente->endereco.numero, numero); 
+    strcpy(paciente->endereco.bairro, bairro); 
 
-    printf("\n\nDigite o DDD: ");
-    scanf(" %3[^\n]", paciente->telefone.ddd);
-    printf("\nDigite a número do contato: ");
-    scanf(" %15[^\n]", paciente->telefone.numero);
+    printf("\nDigite o telefone: ");
+    scanf(" %19[^\n]", paciente->telefone);
 
     printf("\n\nDigite o sexo: ");
     scanf(" %c", &paciente->sexo);
@@ -1074,7 +967,7 @@ void alterarConsulta() {
     }
     
     printf("\nVocê está alterando a seguinte consulta:\n");
-    imprimirEntidade(num_consulta, TIPO_PACIENTE);
+    imprimirEntidade(num_consulta, TIPO_CONSULTA);
     AVANCAR();
 
     printf("\n--- Insira os novos dados abaixo: ---\n");
@@ -1094,7 +987,7 @@ void alterarConsulta() {
             AVANCAR();
         }
     } while(medico == NULL);
-    consulta->medico = medico;
+    consulta->medico = *medico;
 
     Paciente *paciente;
     do {
@@ -1106,27 +999,16 @@ void alterarConsulta() {
             AVANCAR();
         }
     } while(paciente == NULL);
-    consulta->paciente = paciente;
+    consulta->paciente = *paciente;
 
-    Data data;
-    printf("\nDigite a data da consulta: (dd/mm/aaaa)");
-    scanf("%2u/%2u/%4u", &data.dia, &data.mes, &data.ano);
+    printf("\n\nDigite o horário da consulta: (HH:MM)\n");
+    scanf("%2u:%2u", &consulta->horario.horas, &consulta->horario.minutos);
 
-    Horario horario;
-    Duracao duracao;
-    do {
-        printf("\n\nDigite o horário da consulta: (HH:MM)");
-        scanf("%2u:%2u", &horario.horas, &horario.minutos);
-
-        printf("\nDigite o tempo de duração da consulta: (HH:MM)");
-        scanf("%2u:%2u", &duracao.tempo.horas, &duracao.tempo.minutos);
-
-        if (!temConsultaLivre(data, horario, duracao)) AVANCAR();
-    } while (!temConsultaLivre(data, horario, duracao));
-
-    consulta->data = data;
-    consulta->horario = horario;
-    consulta->duracao = duracao;
+    printf("\nDigite o tempo de duração da consulta: (HH:MM)\n");
+    scanf("%2u:%2u", &consulta->duracao.tempo.horas, &consulta->duracao.tempo.minutos);
+    
+    printf("\nDigite a data da consulta: (dd/mm/aaaa)\n");
+    scanf("%2u/%2u/%4u", &consulta->data.dia, &consulta->data.mes, &consulta->data.ano);
 
     int atualizado = atualizarConsultaBIN(consulta);
     if (atualizado) {
@@ -1158,10 +1040,9 @@ void listarConsultasPorPaciente(uint idPaciente) {
     printf("\n---- CONSULTAS AGENDADAS PARA O PACIENTE ID %u ----\n", idPaciente);
     int encontrou = 0;
     for (int i = 0; i < tam; ++i) {
-        if (consultas[i].paciente->ID == idPaciente) {
-            
+        if (consultas[i].paciente.ID == idPaciente) {
             printf("Número da Consulta: %u\n", consultas[i].numero);
-            printf("Médico: %s (%s)\n", consultas[i].medico->nome, consultas[i].medico->especialidade);
+            printf("Médico: %s (%s)\n", consultas[i].medico.nome, consultas[i].medico.especialidade);
             printf("Data: %u/%u/%u às %u:%u\n",
                    consultas[i].data.dia,
                    consultas[i].data.mes,
@@ -1198,8 +1079,8 @@ void listarPacientesPorEspecialidade(const char *especialidade) {
     printf("\n---- PACIENTES COM CONSULTAS NA ESPECIALIDADE %s ----\n", especialidade);
     int encontrou = 0;
     for (int i = 0; i < tam; ++i) {
-        if (strcmp(consultas[i].medico->especialidade, especialidade) == 0) {
-            printf("Paciente: %s (ID: %u)\n", consultas[i].paciente->nome, consultas[i].paciente->ID);
+        if (strcmp(consultas[i].medico.especialidade, especialidade) == 0) {
+            printf("Paciente: %s (ID: %u)\n", consultas[i].paciente.nome, consultas[i].paciente.ID);
             encontrou = 1;
         }
     }
@@ -1227,9 +1108,9 @@ void listarConsultasPorMedico(uint idMedico) {
     printf("\n---- CONSULTAS AGENDADAS PARA O MÉDICO ID %u ----\n", idMedico);
     int encontrou = 0;
     for (int i = 0; i < tam; ++i) {
-        if (consultas[i].medico->ID == idMedico) {
+        if (consultas[i].medico.ID == idMedico) {
             printf("Número da Consulta: %u\n", consultas[i].numero);
-            printf("Paciente: %s (ID: %u)\n", consultas[i].paciente->nome, consultas[i].paciente->ID);
+            printf("Paciente: %s (ID: %u)\n", consultas[i].paciente.nome, consultas[i].paciente.ID);
             printf("Data: %u/%u/%u às %u:%u\n",
                    consultas[i].data.dia,
                    consultas[i].data.mes,
@@ -1293,13 +1174,11 @@ void opcao_pesquisar(TipoEntidade tipo) {
                 scanf("%d", &id);
 
                 imprimirEntidade(id, tipo);
-
                 AVANCAR();
                 break;
 
             case 2:
                 imprimirEntidadesGeral(tipo);
-                AVANCAR();
                 break;
 
             case 3:
@@ -1316,7 +1195,7 @@ void opcao_pesquisar(TipoEntidade tipo) {
 
 // Menus -------------------------------------------------------------------------------------
 void menu(int *opcao) {
-    printf("HOSPITAL CURAS INACREDITAVEIS\n");
+    printf("HOSPITAL CURAS INACREDITAVEIS DE BEAGÁ\n");
     printf("1 - Consulta\n");
     printf("2 - Paciente\n");
     printf("3 - Médico\n");
@@ -1370,6 +1249,7 @@ void menu_secundario(TipoEntidade tipo) {
                     removerPaciente();
                 else if (tipo == TIPO_CONSULTA)
                     removerConsulta();
+                AVANCAR();
                 break;
             case 5:
                 return;
@@ -1427,10 +1307,9 @@ void relatorio_hospital(){
                 break;
         }
     } while (opcao!=4);
-    
 }
 
-
+// Main --------------------------------------------------------------------------------------
 int main(int argc, char const *argv[]) {
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
